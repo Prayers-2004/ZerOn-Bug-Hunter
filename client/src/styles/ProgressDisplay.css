@@ -1,0 +1,130 @@
+.progress-display {
+  background: #f9f9f9;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.progress-bar-container {
+  margin-bottom: 1.5rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  text-align: right;
+  color: #667eea;
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+
+.phase-indicator {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.phase-indicator .phase {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.phase-indicator .status {
+  color: #999;
+  font-size: 0.95rem;
+}
+
+.phases-timeline {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.phase-step {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ddd;
+  transition: all 0.3s;
+}
+
+.phase-step.completed .step-dot {
+  background: #689f38;
+}
+
+.phase-step.current .step-dot {
+  background: #667eea;
+  box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+  animation: pulse 1.5s infinite;
+}
+
+.step-label {
+  font-size: 0.8rem;
+  color: #666;
+  max-width: 60px;
+}
+
+.phase-step.completed .step-label {
+  color: #333;
+  font-weight: 600;
+}
+
+.phase-step.current .step-label {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.findings-count {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  border-left: 4px solid #667eea;
+}
+
+.findings-count h3 {
+  color: #333;
+  font-size: 1rem;
+  margin: 0;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(102, 126, 234, 0.8);
+  }
+}
+
+@media (max-width: 768px) {
+  .phases-timeline {
+    gap: 0.25rem;
+  }
+
+  .step-label {
+    font-size: 0.7rem;
+  }
+}

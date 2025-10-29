@@ -1,0 +1,41 @@
+.scope-input-group {
+  margin-bottom: 1.5rem;
+}
+
+.scope-input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.scope-input-group .hint {
+  display: block;
+  font-size: 0.85rem;
+  color: #999;
+  font-weight: normal;
+  margin-top: 0.25rem;
+}
+
+.scope-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.9rem;
+  resize: vertical;
+  transition: border-color 0.3s;
+}
+
+.scope-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.scope-help {
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}

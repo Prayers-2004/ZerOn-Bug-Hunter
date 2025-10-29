@@ -1,0 +1,11 @@
+{
+  "testInfo": {
+    "timestamp": "2025-10-29T18:15:13.984Z",
+    "server": "server.js (Full Implementation)",
+    "domain": "testphp.vulnweb.com",
+    "backend_url": "http://localhost:5000"
+  },
+  "scan": {},
+  "findings": [],
+  "statistics": {}
+}
