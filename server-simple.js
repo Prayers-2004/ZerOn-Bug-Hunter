@@ -685,9 +685,35 @@ async function runPhase2(scanId, discoveredAssets) {
     }
   }
   
+  // Filter out malformed/encoded URLs and prioritize clean endpoints
+  const cleanEndpoints = endpoints.filter(ep => {
+    try {
+      const url = new URL(ep.url);
+      // Skip URLs with excessive encoding or weird characters
+      if (url.pathname.includes('%CB%93') || url.pathname.includes('%E2%80') || 
+          url.pathname.includes('%D9%') || url.pathname.length > 200) {
+        return false;
+      }
+      // Prioritize URLs with actual parameters or common paths
+      return true;
+    } catch (e) {
+      return false;
+    }
+  });
+  
+  // Prioritize: crawled endpoints > fuzzed > wayback > others
+  const prioritizedEndpoints = [
+    ...cleanEndpoints.filter(ep => ep.type === 'discovered' || ep.type === 'form'),
+    ...cleanEndpoints.filter(ep => ep.type === 'fuzzed'),
+    ...cleanEndpoints.filter(ep => ep.type === 'wayback'),
+    ...cleanEndpoints.filter(ep => !ep.type || (ep.type !== 'discovered' && ep.type !== 'form' && ep.type !== 'fuzzed' && ep.type !== 'wayback'))
+  ];
+  
+  console.log(`  🔍 Filtered: ${prioritizedEndpoints.length} clean endpoints from ${endpoints.length} total`);
+  
   // Discover parameters for each endpoint
-  for (let i = 0; i < Math.min(endpoints.length, 50); i++) {
-    const endpoint = endpoints[i];
+  for (let i = 0; i < Math.min(prioritizedEndpoints.length, 100); i++) {
+    const endpoint = prioritizedEndpoints[i];
     
     try {
       console.log(`  🔍 Analyzing: ${endpoint.url}`);
@@ -730,8 +756,8 @@ async function runPhase2(scanId, discoveredAssets) {
       
       io.emit(`progress_${scanId}`, {
         phase: 'Phase 2: Attack Surface',
-        status: `Analyzed ${i + 1}/${Math.min(endpoints.length, 50)} endpoints`,
-        progress: 40 + (i / Math.min(endpoints.length, 50)) * 10,
+        status: `Analyzed ${i + 1}/${Math.min(prioritizedEndpoints.length, 100)} endpoints`,
+        progress: 40 + (i / Math.min(prioritizedEndpoints.length, 100)) * 10,
         findings: attackSurface.length
       });
       
