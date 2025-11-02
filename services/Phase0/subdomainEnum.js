@@ -67,7 +67,7 @@ class SubdomainEnumerator {
       // Use crt.sh API
       const response = await axios.get(
         `https://crt.sh/?q=%.${domain}&output=json`,
-        { timeout: 10000 }
+        { timeout: 30000 } // Increased to 30 seconds
       );
 
       if (Array.isArray(response.data)) {

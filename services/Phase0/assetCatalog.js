@@ -1,5 +1,5 @@
 // Phase 0: Asset Catalog - Database operations for asset management
-const { db } = require('../config/firebase');
+const { db } = require('../../config/firebase');
 const { v4: uuidv4 } = require('uuid');
 
 class AssetCatalog {

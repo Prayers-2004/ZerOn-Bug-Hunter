@@ -52,17 +52,26 @@ class SeverityCalculator {
     // Base vulnerability type scores
     const typeScores = {
       'RCE': 90,
+      'Remote Code Execution': 90,
       'AuthBypass': 85,
+      'Authentication Bypass': 85,
       'PrivilegeEscalation': 80,
       'SQLi': 80,
+      'SQL Injection': 80,
+      'IDOR': 75,
       'XXE': 75,
       'SSRF': 75,
+      'Business Logic Flaw': 70,
       'PathTraversal': 70,
       'LFI': 70,
+      'CORS Misconfiguration': 65,
       'XSS': 60,
+      'Cross-Site Scripting': 60,
+      'Open Redirect': 50,
       'CSRF': 50,
       'DoS': 40,
-      'InfoDisclosure': 30
+      'InfoDisclosure': 30,
+      'Information Disclosure': 30
     };
 
     score = typeScores[type] || 50;

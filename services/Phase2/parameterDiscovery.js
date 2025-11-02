@@ -73,10 +73,11 @@ class ParameterDiscovery {
 
     try {
       const response = await axios.get(url, {
-        timeout: 10000,
+        timeout: 30000, // Increased to 30 seconds
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        }
+        },
+        validateStatus: () => true
       });
 
       const $ = cheerio.load(response.data);
@@ -108,10 +109,11 @@ class ParameterDiscovery {
 
     try {
       const response = await axios.get(url, {
-        timeout: 10000,
+        timeout: 30000, // Increased to 30 seconds
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        }
+        },
+        validateStatus: () => true
       });
 
       if (typeof response.data === 'object') {
@@ -160,36 +162,58 @@ class ParameterDiscovery {
     return parameters.map(param => {
       const classified = { ...param };
 
-      // Classify by name patterns
+      // Classify by name patterns (with safety check)
+      if (!param.name || typeof param.name !== 'string') {
+        return classified; // Skip invalid parameters
+      }
+      
       const name = param.name.toLowerCase();
 
       if (name.match(/password|pwd|pass/)) {
         classified.classification = 'sensitive_auth';
         classified.sensitivity = 'critical';
+        classified.riskLevel = 'critical';
+        classified.recommendedTests = ['SQLi', 'Authentication Bypass'];
       } else if (name.match(/email|user|username|login/)) {
         classified.classification = 'user_identifier';
         classified.sensitivity = 'high';
+        classified.riskLevel = 'high';
+        classified.recommendedTests = ['SQLi', 'XSS', 'IDOR'];
       } else if (name.match(/token|api[_-]?key|secret|auth/)) {
         classified.classification = 'authentication';
         classified.sensitivity = 'critical';
+        classified.riskLevel = 'critical';
+        classified.recommendedTests = ['Authentication Bypass', 'IDOR'];
       } else if (name.match(/url|uri|path|file|directory/)) {
         classified.classification = 'path_like';
         classified.sensitivity = 'high';
+        classified.riskLevel = 'high';
+        classified.recommendedTests = ['Path Traversal', 'LFI', 'SSRF'];
       } else if (name.match(/id|_id|userid|user_id/)) {
         classified.classification = 'identifier';
         classified.sensitivity = 'medium';
+        classified.riskLevel = 'medium';
+        classified.recommendedTests = ['SQLi', 'IDOR'];
       } else if (name.match(/search|query|q/)) {
         classified.classification = 'search';
         classified.sensitivity = 'medium';
+        classified.riskLevel = 'medium';
+        classified.recommendedTests = ['XSS', 'SQLi'];
       } else if (name.match(/filter|sort|order/)) {
         classified.classification = 'filter';
         classified.sensitivity = 'low';
+        classified.riskLevel = 'low';
+        classified.recommendedTests = ['SQLi'];
       } else if (name.match(/callback|redirect|return/)) {
         classified.classification = 'redirect_like';
         classified.sensitivity = 'high';
+        classified.riskLevel = 'high';
+        classified.recommendedTests = ['Open Redirect', 'SSRF'];
       } else {
         classified.classification = 'generic';
         classified.sensitivity = 'low';
+        classified.riskLevel = 'low';
+        classified.recommendedTests = ['XSS', 'SQLi'];
       }
 
       return classified;

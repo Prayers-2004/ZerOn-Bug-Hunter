@@ -1,10 +1,34 @@
 // Frontend configuration
-const config = {
-  // API Configuration
-  API_BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+
+// Determine the API URL based on environment
+const getApiUrl = () => {
+  // If running on Vercel
+  if (window.location.hostname.includes('vercel.app')) {
+    // Use environment variable or default backend URL
+    return process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  }
   
-  // Socket.io Configuration
-  SOCKET_URL: process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000',
+  // If in development (localhost)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  }
+  
+  // Default fallback
+  return process.env.REACT_APP_API_URL || 'http://localhost:5000';
+};
+
+const config = {
+  // API Configuration - Dynamic based on deployment
+  API_BASE_URL: getApiUrl(),
+  
+  // Socket.io Configuration - Same as API URL
+  SOCKET_URL: getApiUrl(),
+  
+  // Allowed origins for the scanner
+  ALLOWED_ORIGINS: [
+    'http://localhost:3000',
+    'https://zer-on.vercel.app'
+  ],
   
   // Plans Configuration
   PLANS: {

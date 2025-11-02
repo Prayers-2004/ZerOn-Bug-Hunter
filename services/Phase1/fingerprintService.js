@@ -9,10 +9,11 @@ class FingerprintService {
   static async fingerprint(url) {
     try {
       const response = await axios.get(url, {
-        timeout: 10000,
+        timeout: 30000, // Increased to 30 seconds
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        }
+        },
+        validateStatus: () => true // Accept any status code
       });
 
       const technologies = [];

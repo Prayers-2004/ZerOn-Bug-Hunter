@@ -53,15 +53,27 @@ class CrawlerService {
 
     try {
       const response = await axios.get(url, {
-        timeout: 10000,
+        timeout: 30000, // Increased to 30 seconds
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
         },
-        maxRedirects: 5
+        maxRedirects: 5,
+        validateStatus: () => true // Accept any status code
       });
 
       const $ = cheerio.load(response.data);
       const links = new Set();
+
+      // Add the current page as an endpoint if it has query parameters
+      const urlObj = new URL(url);
+      if (urlObj.search) {
+        this.endpoints.push({
+          url: url,
+          method: 'GET',
+          type: 'discovered',
+          source: 'crawler'
+        });
+      }
 
       // Extract all links
       $('a[href]').each((_, element) => {
@@ -75,6 +87,17 @@ class CrawlerService {
             // Only crawl same domain
             if (linkHost === targetHost && !this.visited.has(absoluteUrl)) {
               links.add(absoluteUrl);
+              
+              // Add links with query parameters as endpoints immediately
+              const linkUrlObj = new URL(absoluteUrl);
+              if (linkUrlObj.search) {
+                this.endpoints.push({
+                  url: absoluteUrl,
+                  method: 'GET',
+                  type: 'discovered',
+                  source: 'crawler'
+                });
+              }
             }
           } catch (e) {
             // Invalid URL
@@ -104,13 +127,35 @@ class CrawlerService {
     $('form').each((_, form) => {
       const action = $(form).attr('action');
       const method = $(form).attr('method') || 'GET';
-      const endpoint = new URL(action || '', baseUrl).href;
+      let endpoint = action;
+      
+      // Handle relative URLs
+      if (action) {
+        try {
+          endpoint = new URL(action, baseUrl).href;
+        } catch (e) {
+          endpoint = baseUrl; // Use base URL if action is invalid
+        }
+      } else {
+        endpoint = baseUrl; // Form submits to same page
+      }
+
+      // Extract input fields
+      const inputs = [];
+      $(form).find('input, textarea, select').each((_, input) => {
+        const name = $(input).attr('name');
+        const type = $(input).attr('type') || 'text';
+        if (name) {
+          inputs.push({ name, type });
+        }
+      });
 
       this.endpoints.push({
         url: endpoint,
         method: method.toUpperCase(),
         type: 'form',
-        inputs: []
+        source: 'crawler',
+        inputs: inputs
       });
     });
 
@@ -118,7 +163,7 @@ class CrawlerService {
     $('script').each((_, script) => {
       const content = $(script).html();
       if (content) {
-        this._extractAPIFromScript(content, baseUrlObj.hostname);
+        this._extractAPIFromScript(content, baseUrlObj);
       }
     });
 
@@ -128,16 +173,43 @@ class CrawlerService {
       const dataUrl = $(element).attr('data-url');
       const dataApi = $(element).attr('data-api');
 
-      if (onclick) this._extractFromString(onclick, baseUrlObj.hostname);
-      if (dataUrl) this.endpoints.push({ url: dataUrl, type: 'data-attribute' });
-      if (dataApi) this.endpoints.push({ url: dataApi, type: 'data-attribute' });
+      if (onclick) this._extractFromString(onclick, baseUrlObj);
+      if (dataUrl) {
+        try {
+          const fullUrl = new URL(dataUrl, baseUrl).href;
+          this.endpoints.push({ 
+            url: fullUrl, 
+            method: 'GET',
+            type: 'data-attribute',
+            source: 'crawler'
+          });
+        } catch (e) {
+          // Invalid URL
+        }
+      }
+      if (dataApi) {
+        try {
+          const fullUrl = new URL(dataApi, baseUrl).href;
+          this.endpoints.push({ 
+            url: fullUrl, 
+            method: 'GET',
+            type: 'api',
+            source: 'crawler'
+          });
+        } catch (e) {
+          // Invalid URL
+        }
+      }
     });
   }
 
   /**
    * Extract API endpoints from JavaScript
    */
-  _extractAPIFromScript(content, hostname) {
+  _extractAPIFromScript(content, baseUrlObj) {
+    const hostname = baseUrlObj.hostname;
+    const protocol = baseUrlObj.protocol;
+    
     // Pattern: /api/endpoint, /v1/users, etc.
     const apiPattern = /['"](\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]*)['"]/g;
     let match;
@@ -146,9 +218,10 @@ class CrawlerService {
       const endpoint = match[1];
       if (endpoint.startsWith('/') && endpoint.length > 1) {
         this.endpoints.push({
-          url: `https://${hostname}${endpoint}`,
+          url: `${protocol}//${hostname}${endpoint}`,
+          method: 'GET',
           type: 'api',
-          extractedFrom: 'script'
+          source: 'script'
         });
       }
     }
@@ -162,8 +235,9 @@ class CrawlerService {
         if (urlObj.hostname === hostname || urlObj.hostname.endsWith(`.${hostname}`)) {
           this.endpoints.push({
             url: url,
+            method: 'GET',
             type: 'api',
-            extractedFrom: 'script'
+            source: 'script'
           });
         }
       } catch (e) {
@@ -175,7 +249,10 @@ class CrawlerService {
   /**
    * Extract URLs from JavaScript string
    */
-  _extractFromString(str, hostname) {
+  _extractFromString(str, baseUrlObj) {
+    const hostname = baseUrlObj.hostname;
+    const protocol = baseUrlObj.protocol;
+    
     const urlPattern = /['"](\/[^'"]+)['"]/g;
     let match;
 
@@ -183,8 +260,10 @@ class CrawlerService {
       const endpoint = match[1];
       if (endpoint.startsWith('/')) {
         this.endpoints.push({
-          url: `https://${hostname}${endpoint}`,
-          type: 'extracted'
+          url: `${protocol}//${hostname}${endpoint}`,
+          method: 'GET',
+          type: 'extracted',
+          source: 'onclick'
         });
       }
     }

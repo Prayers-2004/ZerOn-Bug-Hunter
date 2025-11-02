@@ -1,5 +1,5 @@
 // Phase 0: Scope Service - Parse and manage target scopes
-const { db } = require('../config/firebase');
+const { db } = require('../../config/firebase');
 const { v4: uuidv4 } = require('uuid');
 
 class ScopeService {

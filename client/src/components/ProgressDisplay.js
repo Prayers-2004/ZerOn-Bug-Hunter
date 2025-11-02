@@ -23,7 +23,7 @@ function ProgressDisplay({ progress, phase, status, findingsCount }) {
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="progress-text">{progress}%</p>
+        <p className="progress-text">{Number(progress).toFixed(1)}%</p>
       </div>
 
       <div className="phase-indicator">

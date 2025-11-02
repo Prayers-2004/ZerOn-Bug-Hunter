@@ -47,23 +47,78 @@ class ResponseAnalyzer {
    * Analyze SQLi response
    */
   static _analyzeSQLiResponse(response, analysis) {
-    const data = response.data || '';
+    const data = String(response.data || '');
+    const dataLower = data.toLowerCase();
+    
+    // SQL Error Patterns (REAL bug bounty hunter patterns)
     const sqlErrors = [
-      'SQL error', 'syntax error', 'mysql_error', 'PostgreSQL error',
-      'ORA-', 'Syntax error in SQL', 'SQL Server', 'Unclosed quotation mark',
-      'You have an error in your SQL'
+      // MySQL errors
+      'you have an error in your sql syntax',
+      'warning: mysql',
+      'unclosed quotation mark after the character string',
+      'quoted string not properly terminated',
+      'sql syntax',
+      'mysql_fetch',
+      'mysql_num_rows',
+      'mysqli_',
+      'mysql server version',
+      
+      // PostgreSQL
+      'pg_query',
+      'pg_exec',
+      'postgresql',
+      'warning: pg_',
+      'valid postgresql result',
+      
+      // MSSQL
+      'driver.*.sql server',
+      'ole db.* sql server',
+      'unclosed quotation mark before the character string',
+      '\\[sql server\\]',
+      '\\[microsoft\\]\\[odbc sql',
+      
+      // Oracle
+      'ora-[0-9]{4,5}',
+      'oracle error',
+      'oracle.*driver',
+      'warning.*oci_',
+      
+      // SQLite
+      'sqlite_',
+      'sqlite3::',
+      'sqlite error',
+      
+      // Generic SQL
+      'sql error',
+      'syntax error in query',
+      'unexpected end of sql command',
+      'table.*doesn\'t exist',
+      'column.*not found',
+      'ambiguous column name'
     ];
 
+    // Check for SQL errors
     for (const error of sqlErrors) {
-      if (data.toLowerCase().includes(error.toLowerCase())) {
-        analysis.indicators.push(`Found SQL error: ${error}`);
+      const regex = new RegExp(error, 'i');
+      if (regex.test(dataLower)) {
+        analysis.indicators.push(`Found SQL error pattern: ${error}`);
+        analysis.confidence = 95; // High confidence
         return true;
       }
     }
 
-    // Check for timing-based indicators
+    // Boolean-based blind SQLi detection
+    // Check if different boolean payloads give different response lengths
+    if (response.data) {
+      const responseLength = data.length;
+      // Store for blind SQLi comparison (would need baseline)
+      analysis.details.responseLength = responseLength;
+    }
+
+    // Check for timing-based indicators (already done in exploitationEngine)
     if (response.timing && response.timing > 5000) {
-      analysis.indicators.push('Response took unusually long');
+      analysis.indicators.push('Response timing anomaly (potential time-based SQLi)');
+      analysis.confidence = 70;
     }
 
     return analysis.indicators.length > 0;
@@ -73,22 +128,61 @@ class ResponseAnalyzer {
    * Analyze XSS response
    */
   static _analyzeXSSResponse(response, payload, analysis) {
-    const data = response.data || '';
+    const data = String(response.data || '');
+    const payloadStr = String(payload.payload || '');
 
-    // Check if payload is reflected without sanitization
-    if (data.includes(payload.payload)) {
-      analysis.indicators.push('Payload reflected in response');
+    // REAL bug bounty XSS detection patterns
+    
+    // 1. Check if payload is reflected WITHOUT encoding (CRITICAL!)
+    if (data.includes(payloadStr)) {
+      analysis.indicators.push('⚠️ Payload reflected UNENCODED in response');
+      analysis.confidence = 90;
       return true;
     }
 
-    // Check for HTML entities encoding
-    const encoded = this._htmlEncode(payload.payload);
+    // 2. Check for partial reflection (bypass attempts)
+    const partialPayload = payloadStr.substring(0, Math.min(10, payloadStr.length));
+    if (data.includes(partialPayload)) {
+      analysis.indicators.push('Partial payload reflection detected');
+      analysis.confidence = 60;
+    }
+
+    // 3. Check if dangerous tags are reflected
+    const dangerousTags = ['<script', '<img', '<iframe', '<svg', '<object', '<embed', 'onerror=', 'onload=', 'onclick=', 'javascript:'];
+    for (const tag of dangerousTags) {
+      if (data.toLowerCase().includes(tag.toLowerCase())) {
+        analysis.indicators.push(`Dangerous tag found in response: ${tag}`);
+        analysis.confidence = Math.max(analysis.confidence || 0, 80);
+        return true;
+      }
+    }
+
+    // 4. Check for HTML context breaks
+    const contextBreaks = ['</script>', '</style>', '</title>', '-->', '*/'];
+    for (const breakStr of contextBreaks) {
+      if (data.includes(breakStr) && payloadStr.includes(breakStr)) {
+        analysis.indicators.push(`Context break possible: ${breakStr}`);
+        analysis.confidence = 75;
+        return true;
+      }
+    }
+
+    // 5. Check if payload is HTML encoded (likely SAFE, not vulnerable)
+    const encoded = this._htmlEncode(payloadStr);
     if (data.includes(encoded)) {
-      analysis.indicators.push('Payload was HTML encoded (likely safe)');
+      analysis.indicators.push('✓ Payload was HTML encoded (properly sanitized)');
+      analysis.confidence = 0; // NOT vulnerable
       return false;
     }
 
-    return false;
+    // 6. Check response headers for XSS protection
+    const headers = response.headers || {};
+    if (headers['x-xss-protection'] === '0' || !headers['content-security-policy']) {
+      analysis.indicators.push('Missing XSS protection headers');
+      analysis.confidence = Math.max(analysis.confidence || 0, 40);
+    }
+
+    return analysis.indicators.length > 0 && analysis.confidence > 50;
   }
 
   /**
